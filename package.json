@@ -1,0 +1,20 @@
+{
+  "name": "papyrus-crdt",
+  "version": "1.0.0",
+  "description": "Sequence CRDT for a collaborative text editor",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.doc.ic.ac.uk:ma7614/papyrus-crdt.git"
+  },
+  "keywords": [
+    "distributed",
+    "collaborative-editor",
+    "CRDT"
+  ],
+  "author": "Mark Aduol",
+  "license": "MIT"
+}
