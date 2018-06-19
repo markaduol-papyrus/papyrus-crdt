@@ -2,6 +2,8 @@ import CRDT from './../lib/crdt.js';
 import Identifier from './../lib/identifier.js';
 import Char from './../lib/char.js';
 
+////////////////////////////// HELPER FUNCTIONS ////////////////////////////////
+
 /**
  * Get random integer in interval [0, hi)
  */
@@ -70,6 +72,26 @@ function _compareIdArrays(idArr1, idArr2) {
   } else {
     return 1;
   }
+}
+
+function _generateRandomLine(minLength=1, maxLength=100) {
+  let charObjArray = [];
+  const lineLength = _getRandomInt(minLength, maxLength + 1);
+
+  let idArrays = _getDistinctIdArrays(lineLength);
+  // Sort in-place
+  idArrays.sort(_compareIdArrays);
+
+  let charObj;
+  for (let i = 0; i < lineLength - 1; i++) {
+    charObj = new Char(_getRandomChar(), idArrays[i]);
+    charObjArray.push(charObj);
+  }
+  // New-line char to terminate line
+  charObj = new Char('\n', idArrays[lineLength - 1]);
+  charObjArray.push(charObj);
+
+  return charObjArray;
 }
 
 /////////////////////////////// ACTUAL TESTS ///////////////////////////////////
@@ -301,7 +323,116 @@ describe('Remote insertion tests (with randomization)', () => {
 });
 
 describe('Local deletion tests (with randomization)', () => {
+  let crdt;
+  const _MIN_LINE_LENGTH = 1;
+  const _MAX_LINE_LENGTH = 100; // Include '\n' char
 
+  beforeEach(() => {
+    crdt = new CRDT(_getRandomInt());
+  });
+
+  test('Single character insertion then deletion', async () => {
+    const randChar = _getRandomChar();
+    const pos = {lineIndex: 0, charIndex: 0};
+    const endPos = {lineIndex: 0, charIndex: 1};
+    const charObj = await crdt.handleLocalInsert(randChar, pos);
+    expect(crdt.lineArray[0][0]).toEqual(charObj);
+    const delChars = await crdt.handleLocalDelete(pos, endPos);
+    expect(delChars[0]).toEqual(charObj);
+    expect(crdt.lineArray.length === 0);
+  });
+
+  test('Deletion of first character in line', async () => {
+    // Create random line
+    const lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+    // Insert chars
+    for (let i = 0; i < lineChars.length; i++) {
+      let pos = {lineIndex: 0, charIndex: i};
+      await crdt.handleLocalInsert(lineChars[i], pos);
+    }
+
+    // Delete char
+    const pos = {lineIndex: 0, charIndex: 0};
+    let endPos;
+
+    if (lineChars.length === 1 && lineChars[0].getValue() === '\n') {
+      endPos = {lineIndex: 1, charIndex: 0};
+    } else {
+      endPos = {lineIndex: 0, charIndex: 1}
+    }
+    const delChars = await crdt.handleLocalDelete(pos, endPos);
+
+    // Test
+    expect(delChars[0]).toEqual(lineChars[0]);
+    expect(crdt.lineArray[0].length).toEqual(lineChars.length - 1);
+  });
+
+  test('Deletion of middle character in line', async () => {
+    const [minLength, maxLength] = [4, 100];
+    const lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+    // Insert chars
+    for (let i = 0; i < lineChars.length; i++) {
+      let pos = {lineIndex: 0, charIndex: i};
+      await crdt.handleLocalInsert(lineChars[i], pos);
+    }
+
+    // Delete char
+    const randIndex = _getRandomInt(1, lineChars.length - 1);
+    const pos = {lineIndex: 0, charIndex: randIndex};
+    const endPos = {lineIndex: 0, charIndex: randIndex + 1};
+    const delChars = await crdt.handleLocalDelete(pos, endPos);
+
+    // Test
+    expect(delChars[0]).toEqual(lineChars[randIndex]);
+    expect(crdt.lineArray[0].length).toEqual(lineChars.length - 1);
+  });
+
+  test('Deletion of last character in line', async () => {
+
+  });
+
+  test('Deletion of entire line at start of document', async () => {
+
+  });
+
+  test('Deletion of entire line at end of document', async () => {
+
+  });
+
+  test('Deletion of entire line in middle of document', async () => {
+
+  });
+
+  // TODO: Split the next test cases into the following groupings
+  // Full-Full, Full-Partial, Partial-Full, Partial-Partial
+  // First-Last, Mid-Mid, First-Mid, Mid-Last
+  // Thus, 4 x 4 = 16 test cases in total
+
+  test('Deletion of multiple lines starting with full first line of document',
+       async () => {
+
+  });
+
+  test('Deletion of multiple lines starting with partial first line of ' +
+       'document', async () => {
+
+  });
+
+  test('Deletion of multiple lines ending with full last line of document',
+       async () => {
+
+  });
+
+  test('Deletion of multiple lines ending with partial last line of ' +
+       'document', async () => {
+
+  });
+
+  test('Deletion of all lines in document', async() => {
+
+  });
 });
 
 describe('Remote deletion tests (with randomization)', () => {
