@@ -78,19 +78,11 @@ function _generateRandomLine(minLength=1, maxLength=100) {
   let charObjArray = [];
   const lineLength = _getRandomInt(minLength, maxLength + 1);
 
-  let idArrays = _getDistinctIdArrays(lineLength);
-  // Sort in-place
-  idArrays.sort(_compareIdArrays);
-
-  let charObj;
   for (let i = 0; i < lineLength - 1; i++) {
-    charObj = new Char(_getRandomChar(), idArrays[i]);
-    charObjArray.push(charObj);
+    charObjArray.push(_getRandomChar());
   }
   // New-line char to terminate line
-  charObj = new Char('\n', idArrays[lineLength - 1]);
-  charObjArray.push(charObj);
-
+  charObjArray.push('\n');
   return charObjArray;
 }
 
@@ -229,9 +221,14 @@ describe('Remote insertion tests (with randomization)', () => {
     expect(insertPos).toEqual(expectedInsertPos);
   });
 
-  test('Remote insertion of (character -> character)', async () => {
+  test('Remote insertion of two characters at end of line', async () => {
     const idArrays = _getDistinctIdArrays(2);
     const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
+    if (compValue > 0) {
+      let temp = idArrays[1];
+      idArrays[1] = idArrays[0];
+      idArrays[0] = temp;
+    }
     const charObj1 = new Char(_getRandomChar(), idArrays[0]);
     const charObj2 = new Char(_getRandomChar(), idArrays[1]);
 
@@ -243,18 +240,41 @@ describe('Remote insertion tests (with randomization)', () => {
     // Position check
     const pos1 = {lineIndex: 0, charIndex: 0};
     const pos2 = {lineIndex: 0, charIndex: 1};
-    if (compValue < 0) {
-      expect(insertPos1).toEqual(pos1);
-      expect(insertPos2).toEqual(pos2);
-    } else {
-      expect(insertPos1).toEqual(pos2);
-      expect(insertPos2).toEqual(pos1);
-    }
+    expect(insertPos1).toEqual(pos1);
+    expect(insertPos2).toEqual(pos2);
   });
 
-  test('Remote insertion of (newline -> newline)', async () => {
+  test('Remote insertion of two characters at beginning of line', async () => {
     const idArrays = _getDistinctIdArrays(2);
     const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
+    if (compValue > 0) {
+      let temp = idArrays[1];
+      idArrays[1] = idArrays[0];
+      idArrays[0] = temp;
+    }
+    const charObj1 = new Char(_getRandomChar(), idArrays[0]);
+    const charObj2 = new Char(_getRandomChar(), idArrays[1]);
+
+    // Insert character with greater ID array first
+    let [retCharObj2, insertPos2] = await crdt.handleRemoteInsert(charObj2);
+    let [retCharObj1, insertPos1] = await crdt.handleRemoteInsert(charObj1);
+    // Value check
+    expect(charObj1).toEqual(retCharObj1);
+    expect(charObj2).toEqual(retCharObj2);
+    // Position check
+    const pos = {lineIndex: 0, charIndex: 0};
+    expect(insertPos1).toEqual(pos);
+    expect(insertPos2).toEqual(pos);
+  });
+
+  test('Remote insertion of two newlines at end of line', async () => {
+    const idArrays = _getDistinctIdArrays(2);
+    const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
+    if (compValue > 0) {
+      let temp = idArrays[1];
+      idArrays[1] = idArrays[0];
+      idArrays[0] = temp;
+    }
     const charObj1 = new Char('\n', idArrays[0]);
     const charObj2 = new Char('\n', idArrays[1]);
 
@@ -266,16 +286,36 @@ describe('Remote insertion tests (with randomization)', () => {
     // Position check
     const pos1 = {lineIndex: 0, charIndex: 0};
     const pos2 = {lineIndex: 1, charIndex: 0}; // since prev. char is newline
-    if (compValue < 0) {
-      expect(insertPos1).toEqual(pos1);
-      expect(insertPos2).toEqual(pos2);
-    } else {
-      expect(insertPos1).toEqual(pos2);
-      expect(insertPos2).toEqual(pos1);
-    }
+    expect(insertPos1).toEqual(pos1);
+    expect(insertPos2).toEqual(pos2);
   });
 
-  test('Remote insertion of (character -> newline)', async () => {
+  test('Remote insertion of two newlines at beginning of line', async () => {
+    const idArrays = _getDistinctIdArrays(2);
+    const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
+    if (compValue > 0) {
+      let temp = idArrays[1];
+      idArrays[1] = idArrays[0];
+      idArrays[0] = temp;
+    }
+    const charObj1 = new Char('\n', idArrays[0]);
+    const charObj2 = new Char('\n', idArrays[1]);
+
+    // Insert newline with greater ID array first
+    let [retCharObj2, insertPos2] = await crdt.handleRemoteInsert(charObj2);
+    let [retCharObj1, insertPos1] = await crdt.handleRemoteInsert(charObj1);
+    // Value check
+    expect(charObj1).toEqual(retCharObj1);
+    expect(charObj2).toEqual(retCharObj2);
+    // Position check
+    const pos = {lineIndex: 0, charIndex: 0};
+    expect(insertPos1).toEqual(pos);
+    expect(insertPos2).toEqual(pos);
+  });
+
+  test('Remote insertion of character then newline at end of line',
+       async () => {
+
     const idArrays = _getDistinctIdArrays(2);
     const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
     if (compValue > 0) {
@@ -298,7 +338,9 @@ describe('Remote insertion tests (with randomization)', () => {
     expect(insertPos2).toEqual(pos2);
   });
 
-  test('Remote insertion of (newline -> character)', async () => {
+  test('Remote insertion of newline then character on created line',
+       async () => {
+
     const idArrays = _getDistinctIdArrays(2);
     const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
     if (compValue > 0) {
@@ -319,13 +361,41 @@ describe('Remote insertion tests (with randomization)', () => {
     const pos2 = {lineIndex: 1, charIndex: 0}; // since prev. char is newline
     expect(insertPos1).toEqual(pos1);
     expect(insertPos2).toEqual(pos2);
+  });
+
+  test('Remote insertion of newline then character on original line',
+       async () => {
+
+    const idArrays = _getDistinctIdArrays(2);
+    const compValue = _compareIdArrays(idArrays[0], idArrays[1]);
+    if (compValue > 0) {
+      let temp = idArrays[0];
+      idArrays[0] = idArrays[1];
+      idArrays[1] = temp;
+    }
+    const charObj1 = new Char('\n', idArrays[1]);
+    // Make ID smaller than that of newline character
+    const charObj2 = new Char(_getRandomChar(), idArrays[0]);
+
+    let [retCharObj1, insertPos1] = await crdt.handleRemoteInsert(charObj1);
+    let [retCharObj2, insertPos2] = await crdt.handleRemoteInsert(charObj2);
+    // Value check
+    expect(charObj1).toEqual(retCharObj1);
+    expect(charObj2).toEqual(retCharObj2);
+    // Position check
+    const pos = {lineIndex: 0, charIndex: 0};
+    expect(insertPos1).toEqual(pos);
+    expect(insertPos2).toEqual(pos);
   });
 });
 
 describe('Local deletion tests (with randomization)', () => {
   let crdt;
   const _MIN_LINE_LENGTH = 1;
-  const _MAX_LINE_LENGTH = 100; // Include '\n' char
+  const _MAX_LINE_LENGTH = 10; // Include '\n' char
+  // For multi-line documents
+  const _MIN_LINES_IN_DOC = 2;
+  const _MAX_LINES_IN_DOC = 10;
 
   beforeEach(() => {
     crdt = new CRDT(_getRandomInt());
@@ -352,24 +422,51 @@ describe('Local deletion tests (with randomization)', () => {
       await crdt.handleLocalInsert(lineChars[i], pos);
     }
 
+    // Get expected char
+    const expectedChar = Object.assign({}, crdt.lineArray[0][0]);
+
     // Delete char
-    const pos = {lineIndex: 0, charIndex: 0};
+    const startPos = {lineIndex: 0, charIndex: 0};
     let endPos;
 
-    if (lineChars.length === 1 && lineChars[0].getValue() === '\n') {
+    // Check if line consists of a single newline character
+    if (lineChars.length === 1 && lineChars[0] === '\n') {
       endPos = {lineIndex: 1, charIndex: 0};
     } else {
       endPos = {lineIndex: 0, charIndex: 1}
     }
-    const delChars = await crdt.handleLocalDelete(pos, endPos);
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
 
     // Test
-    expect(delChars[0]).toEqual(lineChars[0]);
+    expect(delChars[0]).toEqual(expectedChar);
     expect(crdt.lineArray[0].length).toEqual(lineChars.length - 1);
   });
 
   test('Deletion of middle character in line', async () => {
     const [minLength, maxLength] = [4, 100];
+    const lineChars = _generateRandomLine(minLength, maxLength);
+
+    // Insert chars
+    for (let i = 0; i < lineChars.length; i++) {
+      let pos = {lineIndex: 0, charIndex: i};
+      await crdt.handleLocalInsert(lineChars[i], pos);
+    }
+
+    // Get expected char
+    const randIndex = _getRandomInt(1, lineChars.length - 1);
+    const expectedChar = Object.assign({}, crdt.lineArray[0][randIndex]);
+
+    // Delete char
+    const startPos = {lineIndex: 0, charIndex: randIndex};
+    const endPos = {lineIndex: 0, charIndex: randIndex + 1};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars[0]).toEqual(expectedChar);
+    expect(crdt.lineArray[0].length).toEqual(lineChars.length - 1);
+  });
+
+  test('Deletion of last character in line', async () => {
     const lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
 
     // Insert chars
@@ -378,31 +475,134 @@ describe('Local deletion tests (with randomization)', () => {
       await crdt.handleLocalInsert(lineChars[i], pos);
     }
 
+    // Get expected char
+    const expectedChar = Object.assign(
+      {}, crdt.lineArray[0][crdt.lineArray[0].length - 1]
+    );
+
     // Delete char
-    const randIndex = _getRandomInt(1, lineChars.length - 1);
-    const pos = {lineIndex: 0, charIndex: randIndex};
-    const endPos = {lineIndex: 0, charIndex: randIndex + 1};
-    const delChars = await crdt.handleLocalDelete(pos, endPos);
+    const startPos = {lineIndex: 0, charIndex: lineChars.length - 1};
+    let endPos;
+
+    if (lineChars.length === 1 && lineChars[0] === '\n') {
+      endPos = {lineIndex: 1, charIndex: 0};
+    } else {
+      endPos = {lineIndex: 0, charIndex: lineChars.length};
+    }
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
 
     // Test
-    expect(delChars[0]).toEqual(lineChars[randIndex]);
+    expect(delChars[0]).toEqual(expectedChar);
     expect(crdt.lineArray[0].length).toEqual(lineChars.length - 1);
   });
 
-  test('Deletion of last character in line', async () => {
+  test('Deletion of single line in a single line document', async () => {
+    const lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
 
+    // Insert chars
+    for (let i = 0; i < lineChars.length; i++) {
+      let pos = {lineIndex: 0, charIndex: i};
+      await crdt.handleLocalInsert(lineChars[i], pos);
+    }
+
+    // Get expected line
+    const expectedLine = Object.assign([], crdt.lineArray[0]);
+
+    // Delete char
+    const startPos = {lineIndex: 0, charIndex: 0};
+    const endPos = {lineIndex: 1, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedLine);
+    expect(crdt.lineArray.length).toEqual(0);
   });
 
-  test('Deletion of entire line at start of document', async () => {
+  test('Deletion of a entire line at start of document in multi-line document',
+       async () => {
+    const docLength = _getRandomInt(_MIN_LINES_IN_DOC, _MAX_LINES_IN_DOC + 1);
 
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected line
+    const expectedLine = Object.assign([], crdt.lineArray[0]);
+
+    // Delete line
+    const startPos = {lineIndex: 0, charIndex: 0};
+    const endPos = {lineIndex: 1, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedLine);
+    expect(crdt.lineArray.length).toEqual(docLength - 1);
   });
 
-  test('Deletion of entire line at end of document', async () => {
+  test('Deletion of entire line in middle of document in mutli-line document',
+       async () => {
+    const docLength = _getRandomInt(3, 5);
 
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected line
+    const midIndex = _getRandomInt(1, docLength - 1);
+    const expectedLine = Object.assign([], crdt.lineArray[midIndex]);
+
+    // Delete line
+    const startPos = {lineIndex: midIndex, charIndex: 0};
+    const endPos = {lineIndex: midIndex + 1, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedLine);
+    expect(crdt.lineArray.length).toEqual(docLength - 1);
   });
 
-  test('Deletion of entire line in middle of document', async () => {
+  test('Deletion of entire line at end of document in multi-line document',
+       async () => {
+    const docLength = _getRandomInt(_MIN_LINES_IN_DOC, _MAX_LINES_IN_DOC + 1);
 
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected line
+    const expectedLine = Object.assign(
+      [], crdt.lineArray[crdt.lineArray.length - 1]
+    );
+
+    // Delete line
+    const startPos = {lineIndex: docLength - 1, charIndex: 0};
+    const endPos = {lineIndex: docLength, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedLine);
+    expect(crdt.lineArray.length).toEqual(docLength - 1);
   });
 
   // TODO: Split the next test cases into the following groupings
@@ -410,29 +610,6 @@ describe('Local deletion tests (with randomization)', () => {
   // First-Last, Mid-Mid, First-Mid, Mid-Last
   // Thus, 4 x 4 = 16 test cases in total
 
-  test('Deletion of multiple lines starting with full first line of document',
-       async () => {
-
-  });
-
-  test('Deletion of multiple lines starting with partial first line of ' +
-       'document', async () => {
-
-  });
-
-  test('Deletion of multiple lines ending with full last line of document',
-       async () => {
-
-  });
-
-  test('Deletion of multiple lines ending with partial last line of ' +
-       'document', async () => {
-
-  });
-
-  test('Deletion of all lines in document', async() => {
-
-  });
 });
 
 describe('Remote deletion tests (with randomization)', () => {
