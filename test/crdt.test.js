@@ -5,10 +5,10 @@ import Char from './../lib/char.js';
 ////////////////////////////// HELPER FUNCTIONS ////////////////////////////////
 
 /**
- * Get random integer in interval [0, hi)
+ * Get random integer in interval [lo, hi)
  */
-function _getRandomInt(minValue=0, maxValue=1000) {
-  return minValue + Math.floor(Math.random() * maxValue);
+function _getRandomInt(lo=0, hi=1000) {
+  return lo + Math.floor(Math.random() * (hi - lo));
 }
 
 function _getRandomChar() {
@@ -85,6 +85,13 @@ function _generateRandomLine(minLength=1, maxLength=100) {
   charObjArray.push('\n');
   return charObjArray;
 }
+
+// Constants
+const _MIN_LINE_LENGTH = 1;
+const _MAX_LINE_LENGTH = 10; // Include '\n' char
+// For multi-line documents
+const _MIN_LINES_IN_DOC = 2;
+const _MAX_LINES_IN_DOC = 10;
 
 /////////////////////////////// ACTUAL TESTS ///////////////////////////////////
 describe('Local insertion tests (with randomization)', () => {
@@ -389,13 +396,8 @@ describe('Remote insertion tests (with randomization)', () => {
   });
 });
 
-describe('Local deletion tests (with randomization)', () => {
+describe('Local deletion - Single line - with randomization', () => {
   let crdt;
-  const _MIN_LINE_LENGTH = 1;
-  const _MAX_LINE_LENGTH = 10; // Include '\n' char
-  // For multi-line documents
-  const _MIN_LINES_IN_DOC = 2;
-  const _MAX_LINES_IN_DOC = 10;
 
   beforeEach(() => {
     crdt = new CRDT(_getRandomInt());
@@ -612,6 +614,210 @@ describe('Local deletion tests (with randomization)', () => {
 
 });
 
-describe('Remote deletion tests (with randomization)', () => {
+let describeMsg = 'Local deletion - Multiple lines - Full line to full line';
+describeMsg += ' - with randomization';
 
+describe(describeMsg, () => {
+  // CRDT
+  let crdt;
+
+  beforeEach(() => {
+    crdt = new CRDT(_getRandomInt());
+  });
+
+  test('Deletion from first to last line of document', async () => {
+    const docLength = _getRandomInt(_MIN_LINES_IN_DOC, _MAX_LINES_IN_DOC + 1);
+
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected chars
+    let expectedChars = [];
+    for (let i = 0; i < crdt.lineArray.length; i++) {
+      expectedChars =
+        expectedChars.concat(Object.assign([], crdt.lineArray[i]));
+    }
+
+    // Delete all lines (fully) from start line to last line
+    const startPos = {lineIndex: 0, charIndex: 0};
+    const endPos = {lineIndex: docLength, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedChars);
+    expect(crdt.lineArray.length).toEqual(0);
+  });
+
+  test('Deletion from first to middle line in document', async () => {
+    const docLength = _getRandomInt(3, _MAX_LINES_IN_DOC + 1);
+
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected chars
+    const midIndex = _getRandomInt(1, docLength - 1);
+    let expectedChars = [];
+    for (let i = 0; i < midIndex + 1; i++) {
+      expectedChars =
+        expectedChars.concat(Object.assign([], crdt.lineArray[i]));
+    }
+
+    // Delete all lines (fully) from start line to middle line
+    const startPos = {lineIndex: 0, charIndex: 0};
+    const endPos = {lineIndex: midIndex + 1, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedChars);
+    expect(crdt.lineArray.length).toEqual(docLength - midIndex - 1);
+  });
+
+  test('Deletion from middle to last line of document', async () => {
+    const docLength = _getRandomInt(3, _MAX_LINES_IN_DOC + 1);
+
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected chars
+    const midIndex = _getRandomInt(1, docLength - 1);
+    let expectedChars = [];
+    for (let i = midIndex; i < docLength; i++) {
+      expectedChars =
+        expectedChars.concat(Object.assign([], crdt.lineArray[i]));
+    }
+
+    // Delete all lines (fully) from middle line to last line
+    const startPos = {lineIndex: midIndex, charIndex: 0};
+    const endPos = {lineIndex: docLength, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedChars);
+    expect(crdt.lineArray.length).toEqual(midIndex);
+  });
+
+  test('Deletion from middle to middle line in document', async () => {
+    const docLength = _getRandomInt(10, _MAX_LINES_IN_DOC + 1);
+
+    // Insert lines into doc
+    for (let i = 0; i < docLength; i++) {
+      let lineChars = _generateRandomLine(_MIN_LINE_LENGTH, _MAX_LINE_LENGTH);
+
+      let pos;
+      for (let j = 0; j < lineChars.length; j++) {
+        pos = {lineIndex: i, charIndex: j};
+        await crdt.handleLocalInsert(lineChars[j], pos);
+      }
+    }
+
+    // Get expected chars
+    const midIndex1 = _getRandomInt(1, docLength - 2);
+    const midIndex2 = midIndex1 + 3;
+
+    let expectedChars = [];
+    for (let i = midIndex1; i < midIndex2; i++) {
+      expectedChars =
+        expectedChars.concat(Object.assign([], crdt.lineArray[i]));
+    }
+
+    // Delete lines
+    const startPos = {lineIndex: midIndex1, charIndex: 0};
+    const endPos = {lineIndex: midIndex2, charIndex: 0};
+    const delChars = await crdt.handleLocalDelete(startPos, endPos);
+
+    // Test
+    expect(delChars).toEqual(expectedChars);
+    const expectedLength = docLength - (midIndex2 - midIndex1);
+    expect(crdt.lineArray.length).toEqual(expectedLength);
+  });
+});
+
+describeMsg = 'Local deletion - Multiple lines - Full line to partial line';
+describeMsg += ' - with randomization';
+
+describe(describeMsg, () => {
+
+  test('Deletion of first and last line in document', async () => {
+
+  });
+
+  test('Deletion of first and middle line in document', async () => {
+
+  });
+
+  test('Deletion of middle and last line in document', async () => {
+
+  });
+
+  test('Deletion of two distinct middle lines in document', async () => {
+
+  });
+});
+
+describeMsg = 'Local deletion - Multiple lines - Partial line to full line';
+describeMsg += ' - with randomization';
+
+describe(describeMsg, () => {
+
+  test('Deletion of first and last line in document', async () => {
+
+  });
+
+  test('Deletion of first and middle line in document', async () => {
+
+  });
+
+  test('Deletion of middle and last line in document', async () => {
+
+  });
+
+  test('Deletion of two distinct middle lines in document', async () => {
+
+  });
+});
+
+describeMsg = 'Local deletion - Multiple lines - Partial line to partial line';
+describeMsg += ' - with randomization';
+
+describe(describeMsg, () => {
+
+  test('Deletion of first and last line in document', async () => {
+
+  });
+
+  test('Deletion of first and middle line in document', async () => {
+
+  });
+
+  test('Deletion of middle and last line in document', async () => {
+
+  });
+
+  test('Deletion of two distinct middle lines in document', async () => {
+
+  });
 });

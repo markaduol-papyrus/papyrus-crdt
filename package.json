@@ -10,7 +10,8 @@
     "transform": {
       "^.+\\.jsx?$": "babel-jest"
     },
-    "collectCoverage": true
+    "collectCoverage": true,
+    "verbose": true
   },
   "repository": {
     "type": "git",
