@@ -1329,7 +1329,7 @@ describe(describeMsg, () => {
       }
     }
 
-    // Get expecte chars
+    // Get expected chars
     let mid1 = _getRandomInt(1, docLength - 1);
     let mid2 = _getRandomInt(1, docLength - 1);
     while (mid2 === mid1) {
