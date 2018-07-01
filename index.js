@@ -1,5 +1,5 @@
-import Identifier from './lib/identifier.js';
-import Char from './lib/char.js';
-import CRDT from './lib/crdt.js';
+const Identifier = require('./lib/identifier.js');
+const Char = require('./lib/char.js');
+const CRDT = require('./lib/crdt.js');
 
 module.exports = {Identifier, Char, CRDT};
