@@ -4,7 +4,14 @@
   "description": "Sequence CRDT for a collaborative text editor",
   "main": "index.js",
   "scripts": {
-    "test": "npm test"
+    "test": "jest"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.jsx?$": "babel-jest"
+    },
+    "collectCoverage": true,
+    "verbose": true
   },
   "repository": {
     "type": "git",
@@ -16,5 +23,10 @@
     "CRDT"
   ],
   "author": "Mark Aduol",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "babel-jest": "^23.0.1",
+    "babel-preset-env": "^1.7.0",
+    "jest": "^23.1.0"
+  }
 }
